@@ -28,7 +28,7 @@ ENV APP_DEBUG='debug'
 # ENV SECRET_KEY='test-see-comment-above'
 
 
-ENV NODE_ENV="production"
+# ENV NODE_ENV="production"
 
 WORKDIR /app
 
