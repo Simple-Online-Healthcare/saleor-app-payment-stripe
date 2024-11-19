@@ -45,8 +45,10 @@ jobs:
           input: ./.env.sample
           output: ./.env
         env:
-          SALEOR_API_URL: ${{ secrets.SALEOR_API_URL_DEVELOP }}
-          SECRET_KEY: ${{ secrets.SECRET_KEY_DEVELOP }}
+          SALEOR_API_URL: https://soh-payment-dev.simpleonlinehealthcare.co.uk
+          SECRET_KEY: 6dWrxcbc
+          APP_API_BASE_URL: https://soh-payment-dev.simpleonlinehealthcare.co.uk
+          APP_DEBUG: trace
 
       - name: Checkout Forge Manifest Repo
         uses: actions/checkout@v3
