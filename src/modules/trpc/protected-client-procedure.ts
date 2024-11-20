@@ -16,7 +16,6 @@ import {
 
 const attachAppToken = middleware(async ({ ctx, next }) => {
   logger.debug("attachAppToken middleware");
-
   if (!ctx.saleorApiUrl) {
     logger.debug("ctx.saleorApiUrl not found, throwing");
 
@@ -24,7 +23,6 @@ const attachAppToken = middleware(async ({ ctx, next }) => {
   }
 
   const authData = await saleorApp.apl.get(ctx.saleorApiUrl);
-  console.log("----->27<......>authData",authData )
   if (!authData) {
     logger.debug("authData not found, throwing 401");
 

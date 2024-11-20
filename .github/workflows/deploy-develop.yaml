@@ -44,13 +44,8 @@ jobs:
           input: ./.env.sample
           output: ./.env
         env:
-          SECRET_KEY: 6dWrxcbc
-          APP_API_BASE_URL: https://soh-payment-dev.simpleonlinehealthcare.co.uk
-          APP_DEBUG: debug
-          STRIPE_SECRET_KEY: sk_test_Q0VEvC0jz709g4Vb9yrdwGil009ZOF4t5z
-          STRIPE_PUBLISHABLE_KEY: pk_test_1jTZ01XWXSBINCEIZha636mP00dYuEnmfS
-          STRIPE_WEBHOOK_SECRET: we_1QMo59H6SaqpsR2K43q5X93Z
-          SALEOR_API_URL: https://soh-payment-dev.simpleonlinehealthcare.co.uk/graphql/
+          SALEOR_API_URL: ${{ secrets.SALEOR_API_URL_DEVELOP }}
+          SECRET_KEY: ${{ secrets.SECRET_KEY_DEVELOP }}
 
       - name: Checkout Forge Manifest Repo
         uses: actions/checkout@v3
