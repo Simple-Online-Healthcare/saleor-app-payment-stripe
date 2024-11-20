@@ -33,7 +33,6 @@ jobs:
             exit 1;
           fi
 
-
       - name: Get Repository Name
         run: |
           REPO_NAME="${{ github.repository }}"
@@ -45,10 +44,13 @@ jobs:
           input: ./.env.sample
           output: ./.env
         env:
-          SALEOR_API_URL: https://soh-payment-dev.simpleonlinehealthcare.co.uk
           SECRET_KEY: 6dWrxcbc
           APP_API_BASE_URL: https://soh-payment-dev.simpleonlinehealthcare.co.uk
-          APP_DEBUG: trace
+          APP_DEBUG: debug
+          STRIPE_SECRET_KEY: sk_test_Q0VEvC0jz709g4Vb9yrdwGil009ZOF4t5z
+          STRIPE_PUBLISHABLE_KEY: pk_test_1jTZ01XWXSBINCEIZha636mP00dYuEnmfS
+          STRIPE_WEBHOOK_SECRET: we_1QMo59H6SaqpsR2K43q5X93Z
+          SALEOR_API_URL: https://soh-payment-dev.simpleonlinehealthcare.co.uk/graphql/
 
       - name: Checkout Forge Manifest Repo
         uses: actions/checkout@v3
@@ -65,8 +67,6 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY_DEVELOP }}
           aws-region: eu-west-2
 
-      
-
       - name: Login to Amazon ECR Private
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
@@ -81,8 +81,6 @@ jobs:
           docker build -t $REGISTRY/$REPOSITORY:$IMAGE_TAG -f dockerfiles/develop.Dockerfile .
           docker push $REGISTRY/$REPOSITORY:$IMAGE_TAG
           sed -i "s/newTag:.*$/newTag:\ '$IMAGE_TAG'/" ./forge_k8s_manifests/deployments/apps/${{ env.REPO_NAME }}/kustomization.yaml
-          
-
 
       - name: Deploy latests
         run: |
