@@ -9,7 +9,7 @@ RUN npm install --global pnpm@8.12.0 \
 # Set the working directory within the container
 WORKDIR /code
 # Copy all files from your current directory to the container's working directory
-COPY --chown=node:node . .
+COPY . .
 ARG APP_DEBUG
 ARG SECRET_KEY
 # ARG SALEOR_API_URL
@@ -19,7 +19,7 @@ RUN pnpm install
 RUN pnpm run build
 # Define the command to run your application
 # CMD ["pnpm", "start"]
-USER node
+
 CMD ["sh", "./scripts/start.sh"]
 # Expose a port if your application listens on a specific port (e.g., 3000)
 EXPOSE 3000
