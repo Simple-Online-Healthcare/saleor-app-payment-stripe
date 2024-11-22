@@ -34,7 +34,7 @@ const getApl = async () => {
       });
     }
     default:
-      return new FileAPL();
+      return new FileAPL({ fileName: "mntvolumes/.saleor-app-auth.json" });
   }
   /* c8 ignore stop */
 };
