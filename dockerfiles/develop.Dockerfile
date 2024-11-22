@@ -1,50 +1,25 @@
-# syntax = docker/dockerfile:1
-ARG NODE_VERSION=22.9.0
-FROM node:${NODE_VERSION}-slim AS base
-ENV NODE_VERSION="$NODE_VERSION"
-
-
-LABEL fly_launch_runtime="Next.js"
-
-# Next.js app lives here
-WORKDIR /app
-
+# Use an official Node.js image with Alpine Linux as the base image
+FROM node:22.9.0 as base
+# Install pnpm globally within the container
 # Install pnpm
-ARG PNPM_VERSION=8.12.0
-RUN npm install -g pnpm@$PNPM_VERSION
-
-
-FROM base AS build
-
-# Set these via `docker run -e APP_DEBUG=debug ...`
-# OR set them in your deployed containers environment secrets
-# these are needed for pnpm install schema:generate
-ENV APL='file'
-ENV APP_DEBUG='debug'
-# do not replace these here, set these in the deployed environment, or docker run -e ...
-# ENV TEST_SALEOR_API_URL=''
-# ENV UPSTASH_TOKEN=''
-# ENV UPSTASH_URL=''
-# ENV SECRET_KEY='test-see-comment-above'
-
-
-# ENV NODE_ENV="production"
-
-WORKDIR /app
-
-COPY package.json pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile --prod=false
-
-COPY . .
-RUN SECRET_KEY='test-see-comment-above' pnpm run build
-# Remove development dependencies
-RUN pnpm prune --prod
-# Final stage for app image
-FROM base
-
-# Copy built application
-COPY --from=build /app /app
-
-# Start the server by default, this can be overwritten at runtime
+RUN apk add --update bash
+RUN npm install --global pnpm@8.12.0 \
+    && SHELL=bash pnpm setup \
+    && source /root/.bashrc
+# Set the working directory within the container
+WORKDIR /code
+# Copy all files from your current directory to the container's working directory
+COPY --chown=node:node . .
+ARG APP_DEBUG
+ARG SECRET_KEY
+# ARG SALEOR_API_URL
+# RUN mkdir -p /code/mntvolumes && ln -s /code/.saleor-app-auth.json /code/mntvolumes/.saleor-app-auth.json
+# Install project dependencies using pnpm
+RUN pnpm install
+RUN pnpm run build
+# Define the command to run your application
+# CMD ["pnpm", "start"]
+USER node
+CMD ["sh", "./scripts/start.sh"]
+# Expose a port if your application listens on a specific port (e.g., 3000)
 EXPOSE 3000
-CMD [ "pnpm", "run", "start" ]
