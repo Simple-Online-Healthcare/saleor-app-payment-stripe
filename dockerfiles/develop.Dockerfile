@@ -1,5 +1,5 @@
 # Use an official Node.js image with Alpine Linux as the base image
-FROM node:22.9.0 as base
+FROM node:22.9.0-alpine as base
 # Install pnpm globally within the container
 # Install pnpm
 RUN apk add --update bash
