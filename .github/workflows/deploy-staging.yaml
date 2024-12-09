@@ -23,7 +23,7 @@ jobs:
             echo "DEST_BRANCH=deploy-develop" >> $GITHUB_ENV
             echo "DEST_REGION=eu-west-2" >> $GITHUB_ENV
           elif [ ${{ env.BRANCH_PREFIX }} == 'staging' ]; then
-            echo "DEST_BRANCH=staging" >> $GITHUB_ENV
+            echo "DEST_BRANCH=deploy-staging" >> $GITHUB_ENV
             echo "DEST_REGION=eu-west-2" >> $GITHUB_ENV
           elif [ ${{ env.BRANCH_PREFIX }} == 'deploy-prod' ]; then
             echo "DEST_BRANCH=deploy-prod" >> $GITHUB_ENV
