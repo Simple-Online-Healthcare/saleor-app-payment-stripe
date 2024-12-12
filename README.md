@@ -1,4 +1,4 @@
-# Stripe App test for qa
+# Stripe App
 
 > [!CAUTION]
 > Stripe App is not a production-ready app, but an integration example. It is not feature complete and must be self-hosted.
