@@ -19,7 +19,6 @@ RUN pnpm install
 RUN pnpm run build
 # Define the command to run your application
 # CMD ["pnpm", "start"]
-
 CMD ["sh", "./scripts/start.sh"]
 # Expose a port if your application listens on a specific port (e.g., 3000)
 EXPOSE 3000
