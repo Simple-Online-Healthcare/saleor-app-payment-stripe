@@ -9,7 +9,8 @@ import { invariant } from "@/lib/invariant";
 import type { TransactionInitializeSessionResponse } from "@/schemas/TransactionInitializeSession/TransactionInitializeSessionResponse.mjs";
 import { InvalidSecretKeyError, RestrictedKeyNotSupportedError } from "@/errors";
 import { unpackPromise } from "@/lib/utils";
-import { createLogger, redactError } from "@/lib/logger";
+import { createLogger, logger, redactError } from "@/lib/logger";
+import { env } from "@/lib/env.mjs";
 
 export const getStripeApiClient = (secretKey: string) => {
   const stripe = new Stripe(secretKey, {
@@ -97,6 +98,9 @@ export const transactionSessionInitializeEventToStripeCreate = (
       ...data.metadata,
       transactionId: event.transaction.id,
       channelId: event.sourceObject.channel.id,
+      saleorAPIUrl: `${env.SALEOR_API_URL}`,
+      nodeEnv: `${env.NODE_ENV}`,
+      sohEnv: `${env.ENV}`,
       ...(event.sourceObject.__typename === "Checkout" && { checkoutId: event.sourceObject.id }),
       ...(event.sourceObject.__typename === "Order" && { orderId: event.sourceObject.id }),
     },
@@ -121,6 +125,9 @@ export const transactionSessionProcessEventToStripeUpdate = (
       ...data.metadata,
       transactionId: event.transaction.id,
       channelId: event.sourceObject.channel.id,
+      saleorAPIUrl: `${env.SALEOR_API_URL}`,
+      nodeEnv: `${env.NODE_ENV}`,
+      sohEnv: `${env.ENV}`,
       ...(event.sourceObject.__typename === "Checkout" && { checkoutId: event.sourceObject.id }),
       ...(event.sourceObject.__typename === "Order" && { orderId: event.sourceObject.id }),
     },
@@ -157,7 +164,7 @@ export const stripePaymentIntentToTransactionResult = (
   }
 };
 
-export const initializeStripePaymentIntent = ({
+export const initializeStripePaymentIntent = async ({
   paymentIntentCreateParams,
   secretKey,
 }: {
@@ -165,6 +172,46 @@ export const initializeStripePaymentIntent = ({
   secretKey: string;
 }) => {
   const stripe = getStripeApiClient(secretKey);
+
+  // Validate metadata
+  const { metadata } = paymentIntentCreateParams;
+  console.log("Stripe Metadata", metadata);
+  if (!metadata || (!metadata.checkoutId && !metadata.orderId)) {
+    console.log("Return New Stripe", metadata);
+    return stripe.paymentIntents.create(paymentIntentCreateParams);
+  }
+
+  // Build the query to search for existing PaymentIntents
+  let query = "";
+  if (metadata.checkoutId) {
+    query += `metadata['checkoutId']: '${metadata.checkoutId}'`;
+  }
+  if (metadata.orderId) {
+    query += `metadata['orderId']: '${metadata.orderId}'`;
+  }
+  query += ` AND status:'requires_payment_method' AND currency:'${paymentIntentCreateParams.currency}'`;
+  console.log("Stripe Query ", query);
+  // Perform the search for existing PaymentIntents
+  const searchResults = await stripe.paymentIntents.search({ query, limit: 10 });
+
+  // Check if any existing PaymentIntents were found
+  for (const existingIntent of searchResults.data) {
+    const existingAmount = existingIntent.amount;
+    if (existingAmount === paymentIntentCreateParams.amount) {
+      // If the amount matches, return the existing PaymentIntent
+      console.log("Stripe Existing  ", existingIntent);
+      return existingIntent;
+    } else {
+      // If the amount does not match, cancel the existing PaymentIntent
+      console.log("Cancel Existing  ", existingIntent);
+      await stripe.paymentIntents.cancel(existingIntent.id);
+    }
+  }
+
+  // Create a new PaymentIntent if no matching one exists or after cancelling
+  console.log("New Stripe payment");
+  console.log("New Stripe payment", paymentIntentCreateParams);
+  logger.info(paymentIntentCreateParams, "Payment Intent Create Params");
   return stripe.paymentIntents.create(paymentIntentCreateParams);
 };
 

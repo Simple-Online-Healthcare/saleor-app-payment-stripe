@@ -25,6 +25,8 @@ export const env = createEnv({
     REST_APL_ENDPOINT: z.string().optional(),
     REST_APL_TOKEN: z.string().optional(),
     ALLOWED_DOMAIN_PATTERN: z.string().optional(),
+    SALEOR_API_URL: z.string().optional(),
+    NODE_ENV: z.string().optional(),
   },
 
   /*
@@ -43,6 +45,8 @@ export const env = createEnv({
    * 💡 You'll get type errors if not all variables from `server` & `client` are included here.
    */
   runtimeEnv: {
+    SALEOR_API_URL: process.env.SALEOR_API_URL,
+    NODE_ENV: process.env.NODE_ENV,
     ENV: process.env.ENV,
     NEXT_PUBLIC_SENTRY_DSN: process.env.NEXT_PUBLIC_SENTRY_DSN,
 
