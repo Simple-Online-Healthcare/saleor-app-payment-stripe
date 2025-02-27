@@ -51,6 +51,8 @@ export const TransactionInitializeSessionWebhookHandler = async (
   logger.info({}, "Processing Transaction Initialize request");
 
   const paymentIntentCreateParams = transactionSessionInitializeEventToStripeCreate(event);
+  logger.info(event, "Transaction Session Initialize Event");
+  logger.info(paymentIntentCreateParams, "Transaction Session Initialize Params");
   logger.debug({
     paymentIntentCreateParams: obfuscateConfig(paymentIntentCreateParams),
     environment: getEnvironmentFromKey(stripeConfig.publishableKey),
@@ -81,6 +83,8 @@ export const TransactionInitializeSessionWebhookHandler = async (
     event.action.actionType,
     stripePaymentIntent,
   );
+  console.log("Stripe -> Transaction result", result);
+  logger.info(result, "Stripe -> Transaction result");
   logger.debug(result, "Stripe -> Transaction result");
 
   const transactionInitializeSessionResponse: TransactionInitializeSessionResponse = {

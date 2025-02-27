@@ -26,6 +26,7 @@ import {
 } from "generated/graphql";
 import { assertUnreachableButNotThrow } from "@/lib/invariant";
 import { __do, unpackPromise } from "@/lib/utils";
+import { env } from "@/lib/env.mjs";
 
 export const stripeWebhookHandler = async (req: NextApiRequest) => {
   const logger = createLogger({}, { msgPrefix: "[stripeWebhookHandler] " });
@@ -140,6 +141,12 @@ async function requestToStripeEvent({
 
   const unsafeParsedBody = JSON.parse(body.toString()) as Stripe.DiscriminatedEvent;
   const channelId = getChannelIdFromEventData(unsafeParsedBody.data);
+  const sohEnv = getCpdEnvFromEventData(unsafeParsedBody.data);
+
+  if (sohEnv && sohEnv !== `${env.ENV}`) {
+    logger.warn(`Missing configuration for sohEnv ${sohEnv || "<undefined>"}`);
+    return null;
+  }
 
   const configEntry = getConfigurationForChannel(appConfig, channelId);
 
@@ -211,6 +218,24 @@ const getChannelIdFromEventData = <T>(data?: T) => {
     typeof data.object.metadata.channelId === "string"
   ) {
     return data.object.metadata.channelId;
+  }
+  return null;
+};
+
+const getCpdEnvFromEventData = <T>(data?: T) => {
+  if (
+    typeof data === "object" &&
+    data &&
+    "object" in data &&
+    typeof data.object === "object" &&
+    data?.object &&
+    "metadata" in data.object &&
+    typeof data.object.metadata === "object" &&
+    data.object.metadata &&
+    "sohEnv" in data.object.metadata &&
+    typeof data.object.metadata.sohEnv === "string"
+  ) {
+    return data.object.metadata.sohEnv;
   }
   return null;
 };
