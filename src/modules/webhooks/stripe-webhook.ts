@@ -139,6 +139,7 @@ async function requestToStripeEvent({
   const body = await buffer(req);
 
   const unsafeParsedBody = JSON.parse(body.toString()) as Stripe.DiscriminatedEvent;
+  logger.info(unsafeParsedBody.data, "--------------------->>>>> Stripe Webhook data");
   const channelId = getChannelIdFromEventData(unsafeParsedBody.data);
 
   const configEntry = getConfigurationForChannel(appConfig, channelId);
