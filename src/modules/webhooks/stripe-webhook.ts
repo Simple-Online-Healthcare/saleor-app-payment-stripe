@@ -23,6 +23,8 @@ import {
   UntypedTransactionEventReportDocument,
   TransactionEventTypeEnum,
   TransactionActionEnum,
+  type TransactionUpdateMutation,
+  type TransactionUpdateMutationVariables,
 } from "generated/graphql";
 import { assertUnreachableButNotThrow } from "@/lib/invariant";
 import { __do, unpackPromise } from "@/lib/utils";
@@ -60,6 +62,95 @@ async function processStripeEvent({
     },
     "Got Stripe event",
   );
+
+  if (stripeEvent.type === "payment_intent.succeeded") {
+    const paymentIntent = stripeEvent.data.object;
+    if (paymentIntent.setup_future_usage === 'off_session') {
+      const transactionId = getTransactionIdFromEventData(stripeEvent.data);
+      const stripeCustomerId = paymentIntent.customer;
+      const stripePaymentMethodId = paymentIntent.payment_method;
+
+      if (
+        transactionId &&
+        typeof stripeCustomerId === "string" &&
+        stripeCustomerId.startsWith("cus_") &&
+        typeof stripePaymentMethodId === "string" &&
+        stripePaymentMethodId.startsWith("pm_")
+      ) {
+        logger.info(
+          { transactionId, stripeCustomerId, stripePaymentMethodId },
+          "Found Customer and Payment Method IDs in successful off-session PaymentIntent, preparing transactionUpdate",
+        );
+
+        const privateMetadataPayload = {
+          stripe_customer_id: stripeCustomerId,
+          stripe_payment_method_id: stripePaymentMethodId,
+        };
+        const privateMetadata = JSON.stringify(privateMetadataPayload);
+
+        // TODO: Add idempotency check here if desired - query transaction(id: transactionId) { privateMetadata }
+
+        // Define the TransactionUpdate mutation document (replace with actual import if available)
+        const UntypedTransactionUpdateDocumentString = `
+          mutation TransactionUpdate($id: ID!, $privateMetadata: String!) {\
+            transactionUpdate(id: $id, input: { privateMetadata: $privateMetadata }) {\
+              transaction {\
+                id\
+                privateMetadata\
+              }\
+              errors {\
+                field\
+                message\
+                code\
+              }\
+            }\
+          }\
+        `;
+
+        const variables: TransactionUpdateMutationVariables = {
+          id: transactionId,
+          privateMetadata,
+        };
+
+        const { data, error } = await client
+          .mutation<TransactionUpdateMutation, TransactionUpdateMutationVariables>(
+            UntypedTransactionUpdateDocumentString, // Use the actual imported document if available
+            variables,
+          )
+          .toPromise();
+
+        const mutationErrors = [error, ...(data?.transactionUpdate?.errors || [])].filter(Boolean);
+
+        if (mutationErrors.length > 0) {
+          const message = mutationErrors.map((err: any) => err.message || 'Unknown GraphQL Error').join("\n");
+          logger.error(
+            { transactionId, errors: mutationErrors },
+            `Failed to update transaction privateMetadata with Stripe IDs: ${message}`,
+          );
+          // Decide if this should throw or just log
+          // throw new Error(`Failed to update transaction metadata: ${message}`);
+        } else {
+          logger.info(
+            { transactionId },
+            "Successfully updated transaction privateMetadata with Stripe IDs",
+          );
+        }
+      } else {
+        // Log if IDs were missing *specifically* for an off_session intent
+        logger.warn(
+          {
+            transactionId,
+            hasCustomerId: !!stripeCustomerId,
+            isCustomerString: typeof stripeCustomerId === "string",
+            hasPaymentMethodId: !!stripePaymentMethodId,
+            isPaymentMethodString: typeof stripePaymentMethodId === "string",
+            intentId: paymentIntent.id,
+          },
+          "payment_intent.succeeded (off_session) event missing expected transactionId in metadata, or customer/paymentMethod IDs are missing or not strings. Cannot update metadata.",
+        );
+      }
+    }
+  }
 
   const transactionEventReport = await stripeEventToTransactionEventReport({
     appConfig,
