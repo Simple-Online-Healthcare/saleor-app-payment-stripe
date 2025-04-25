@@ -3,6 +3,7 @@ FROM node:22.9.0-alpine as base
 # Install pnpm globally within the container
 # Install pnpm
 RUN apk add --update bash
+RUN apk add --no-cache curl
 RUN npm install --global pnpm@8.12.0 \
     && SHELL=bash pnpm setup \
     && source /root/.bashrc
