@@ -193,15 +193,24 @@ export const initializeStripePaymentIntent = async ({
   // Check if any existing PaymentIntents were found
   for (const existingIntent of searchResults.data) {
     const existingAmount = existingIntent.amount;
+
     if (existingAmount === paymentIntentCreateParams.amount) {
-      // If the amount matches, return the existing PaymentIntent
-      console.log("Stripe Existing  ", existingIntent);
+      console.log("Stripe Existing:", existingIntent);
       return existingIntent;
-    } else {
-      // If the amount does not match, cancel the existing PaymentIntent
-      console.log("Cancel Existing  ", existingIntent);
-      await stripe.paymentIntents.cancel(existingIntent.id);
     }
+
+    // Check if the payment intent is cancelable before canceling it
+    if (existingIntent.status === "canceled" || existingIntent.status === "succeeded") {
+      console.log(
+        "Skipping cancellation for",
+        existingIntent.id,
+        "- Status:",
+        existingIntent.status,
+      );
+      continue;
+    }
+    console.log("Canceling Existing:", existingIntent);
+    await stripe.paymentIntents.cancel(existingIntent.id);
   }
 
   // Create a new PaymentIntent if no matching one exists or after cancelling
