@@ -46,7 +46,7 @@
     "@tanstack/react-query-devtools": "4.36.1",
     "@trpc/client": "10.44.1",
     "@trpc/next": "10.44.1",
-    "@trpc/server": "10.44.1",
+    "@trpc/server": "10.45.3",
     "@urql/exchange-auth": "1.0.0",
     "@vanilla-extract/css": "1.14.0",
     "@vanilla-extract/next-plugin": "2.3.2",
