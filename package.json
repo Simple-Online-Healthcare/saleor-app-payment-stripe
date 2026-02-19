@@ -118,7 +118,7 @@
     "@vitest/coverage-v8": "0.34.2",
     "vite": "5.4.21",
     "dependency-cruiser": "15.5.0",
-    "eslint": "8.55.0",
+    "eslint": "9.26.0",
     "eslint-config-next": "14.0.4",
     "eslint-config-prettier": "9.1.0",
     "eslint-plugin-import": "2.29.0",
