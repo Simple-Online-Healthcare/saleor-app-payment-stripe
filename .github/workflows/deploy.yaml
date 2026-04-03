@@ -1,0 +1,112 @@
+name: Build & Push Saleor-Payment
+
+on:
+  push:
+    branches:
+      - development
+      - qa
+      - staging
+      - deploy-prodau
+
+permissions:
+  id-token: write  # Required for OIDC
+  contents: read
+
+jobs:
+  build:
+    name: Build Image (${{ github.ref_name }})
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Resolve environment config
+        run: |
+          case "$GITHUB_REF_NAME" in
+            development)
+              echo "DEST_BRANCH=deploy-develop"             >> $GITHUB_ENV
+              echo "DEST_REGION=eu-west-2"                  >> $GITHUB_ENV
+              echo "ECR_REPOSITORY=saleor-payment-develop"  >> $GITHUB_ENV
+              echo "DOCKERFILE=dockerfiles/develop.Dockerfile" >> $GITHUB_ENV
+              ;;
+            qa)
+              echo "DEST_BRANCH=deploy-qa"                  >> $GITHUB_ENV
+              echo "DEST_REGION=eu-west-2"                  >> $GITHUB_ENV
+              echo "ECR_REPOSITORY=saleor-payment-qa"       >> $GITHUB_ENV
+              echo "DOCKERFILE=dockerfiles/qa.Dockerfile"   >> $GITHUB_ENV
+              ;;
+            staging)
+              echo "DEST_BRANCH=deploy-staging"             >> $GITHUB_ENV
+              echo "DEST_REGION=eu-west-2"                  >> $GITHUB_ENV
+              echo "ECR_REPOSITORY=saleor-payment-staging"  >> $GITHUB_ENV
+              echo "DOCKERFILE=dockerfiles/staging.Dockerfile" >> $GITHUB_ENV
+              ;;
+            deploy-prodau)
+              echo "DEST_BRANCH=deploy-prod-au"             >> $GITHUB_ENV
+              echo "DEST_REGION=ap-southeast-2"             >> $GITHUB_ENV
+              echo "ECR_REPOSITORY=saleor-payment-prod"     >> $GITHUB_ENV
+              echo "DOCKERFILE=dockerfiles/prod.Dockerfile" >> $GITHUB_ENV
+              ;;
+            *)
+              echo "Unknown branch: $GITHUB_REF_NAME"
+              exit 1
+              ;;
+          esac
+
+      - name: Get repository name
+        run: |
+          REPO_NAME="${{ github.repository }}"
+          echo "REPO_NAME=${REPO_NAME#*/}" >> $GITHUB_ENV
+
+      - name: Render Deployment YAML
+        uses: nowactions/envsubst@v1
+        with:
+          input: ./.env.sample
+          output: ./.env
+        env:
+          SALEOR_API_URL: ${{ secrets.SALEOR_API_URL_DEVELOP }}
+          SECRET_KEY: ${{ secrets.SECRET_KEY_DEVELOP }}
+
+      - name: Checkout Forge Manifest Repo
+        uses: actions/checkout@v4
+        with:
+          repository: Simple-Online-Healthcare/forge_k8s_manifests
+          path: ./forge_k8s_manifests
+          ref: ${{ env.DEST_BRANCH }}
+          token: ${{ secrets.SOP_REPO_PAT }}
+
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_GITHUB_PIPELINE }}
+          aws-region: ${{ env.DEST_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, tag, and push Docker image to ECR
+        env:
+          REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.run_number }}
+        run: |
+          docker build -t "$REGISTRY/${{ env.ECR_REPOSITORY }}:$IMAGE_TAG" -f ${{ env.DOCKERFILE }} .
+          docker push "$REGISTRY/${{ env.ECR_REPOSITORY }}:$IMAGE_TAG"
+          sed -i "s/newTag:.*$/newTag: '$IMAGE_TAG'/" \
+            ./forge_k8s_manifests/deployments/apps/${{ env.REPO_NAME }}/kustomization.yaml
+
+      - name: Commit and push manifest update
+        run: |
+          cd forge_k8s_manifests
+          git config user.email "bikash@simpleonlinehealthcare.com"
+          git config user.name  "bikash-webwizard"
+          git add deployments/apps/${{ env.REPO_NAME }}/kustomization.yaml
+          git commit -m "Deploy ${{ env.ECR_REPOSITORY }}:${{ github.run_number }} [${{ github.ref_name }}]"
+
+          for i in {1..10}; do
+            git pull --rebase origin ${{ env.DEST_BRANCH }} && \
+            git push origin ${{ env.DEST_BRANCH }} && break
+            echo "Push attempt $i failed, retrying in 3s..."
+            sleep 3
+          done
