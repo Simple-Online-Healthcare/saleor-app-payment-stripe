@@ -82,6 +82,17 @@ jobs:
           role-to-assume: ${{ secrets.AWS_ROLE_GITHUB_PIPELINE }}
           aws-region: ${{ env.DEST_REGION }}
 
+      - name: Debug OIDC token
+        run: |
+          TOKEN=$(curl -s -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sts.amazonaws.com")
+          echo $TOKEN | python3 -c "
+          import sys, json, base64
+          token = json.load(sys.stdin)['value'].split('.')[1]
+          padding = 4 - len(token) % 4
+          print(json.dumps(json.loads(base64.b64decode(token + '='*padding)), indent=2))
+          "sub": "repo:Simple-Online-Healthcare/saleor-app-payment-stripe:ref:refs/heads/development"    
+
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
