@@ -76,6 +76,13 @@ jobs:
           ref: ${{ env.DEST_BRANCH }}
           token: ${{ secrets.SOP_REPO_PAT }}
 
+      - name: Debug role ARN
+        run: |
+          echo "Role ARN length: ${#ROLE_ARN}"
+          echo "Role ARN prefix: ${ROLE_ARN:0:25}"
+        env:
+          ROLE_ARN: ${{ secrets.AWS_ROLE_GITHUB_PIPELINE }}
+
       - name: Configure AWS credentials via OIDC
         uses: aws-actions/configure-aws-credentials@v4
         with:
